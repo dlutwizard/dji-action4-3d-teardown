@@ -754,6 +754,7 @@ scene.add(realModelGroup);
 let realModelReady = false;
 let realModulesReady = false;
 let assetSettled = false;
+let loadFailed = false;
 const M = (o) => new THREE.MeshStandardMaterial(o);
 const P = (o) => new THREE.MeshPhysicalMaterial(o);
 function add(g, geo, mat, x=0, y=0, z=0, rx=0, ry=0, rz=0){
@@ -1744,10 +1745,9 @@ function animate(){
   renderer.render(scene, camera);
   if(firstFrame){
     firstFrame = false;
-    const started = performance.now();
     const reveal = ()=>{
-      if(assetSettled || performance.now() - started > 12000) loader.classList.add('hidden');
-      else setTimeout(reveal, 140);
+      if(realModulesReady){ loader.classList.add('hidden'); return; }
+      if(!loadFailed) setTimeout(reveal, 180);
     };
     setTimeout(reveal, 420);
   }
@@ -1893,7 +1893,7 @@ function setupRealModules(root){
 }
 
 const realLoader = new GLTFLoader();
-realLoader.load('assets/dji-action4.glb', (gltf)=>{
+function finishRealLoad(gltf){
   const root = gltf.scene;
   root.traverse((o)=>{
     if(!o.isMesh) return;
@@ -1914,15 +1914,34 @@ realLoader.load('assets/dji-action4.glb', (gltf)=>{
   realModelGroup.add(root);
   setupRealModules(root);
   assetSettled = true;
-}, (progress)=>{
-  const txt = document.querySelector('.loader-txt');
-  if(txt && progress.total) txt.textContent = 'LOADING OFFICIAL MODEL · ' + Math.round(progress.loaded / progress.total * 100) + '%';
-}, ()=>{
-  assetSettled = true;
-  realModelReady = false;
-  const txt = document.querySelector('.loader-txt');
-  if(txt) txt.textContent = 'OFFICIAL MODEL LOAD FAILED · 请刷新重试';
-});
+  loadFailed = false;
+}
+
+function loadRealModel(attempt = 1){
+  const url = 'assets/dji-action4.glb?v=3' + (attempt > 1 ? '&retry=' + attempt : '');
+  realLoader.load(url, finishRealLoad, (progress)=>{
+    const txt = document.querySelector('.loader-txt');
+    if(!txt) return;
+    if(progress.total) txt.textContent = 'LOADING OFFICIAL MODEL · ' + Math.round(progress.loaded / progress.total * 100) + '%';
+    else txt.textContent = 'LOADING OFFICIAL MODEL · ' + (progress.loaded / 1048576).toFixed(1) + ' MB';
+  }, ()=>{
+    if(attempt < 3){
+      const txt = document.querySelector('.loader-txt');
+      if(txt) txt.textContent = '连接中断 · 正在重试 ' + attempt + ' / 2';
+      setTimeout(()=>loadRealModel(attempt + 1), 900);
+      return;
+    }
+    assetSettled = true;
+    realModelReady = false;
+    loadFailed = true;
+    const txt = document.querySelector('.loader-txt');
+    const bar = document.querySelector('.loader-bar');
+    if(txt) txt.textContent = 'OFFICIAL MODEL LOAD FAILED · 请刷新页面重试';
+    if(bar) bar.style.display = 'none';
+  });
+}
+
+loadRealModel();
 
 showOverview();
 refreshUI();

@@ -281,7 +281,7 @@ h1 span{color:var(--cyan);text-shadow:0 0 24px rgba(66,230,255,.55)}
     <span class="hint-key">DRAG</span> 旋转 <i></i>
     <span class="hint-key">SCROLL</span> 缩放 <i></i>
     <span class="hint-key">CLICK</span> 拆解 <i></i>
-    <span>旋转查看背面部件</span>
+    <span>旋转查看背面与底部</span>
   </div>
   <div class="credit mono">OFFICIAL 3D MODEL · REAL-GEOMETRY TEARDOWN</div>
 
@@ -450,8 +450,8 @@ controls.zoomSpeed = 0.8;
 controls.panSpeed = 0.6;
 controls.minDistance = 2.1;
 controls.maxDistance = 12;
-controls.minPolarAngle = 0.16;
-controls.maxPolarAngle = Math.PI * 0.56;
+controls.minPolarAngle = 0.06;
+controls.maxPolarAngle = Math.PI - 0.06;
 controls.target.set(0.35, 0.02, 0);
 controls.autoRotateSpeed = 0.72;
 controls.update();
@@ -495,6 +495,12 @@ scene.add(frontFill);
 const softboxLight = new THREE.DirectionalLight(0xe8f4ff, 1.85);
 softboxLight.position.set(-2.6, 1.5, 5.0);
 scene.add(softboxLight);
+const bottomFill = new THREE.DirectionalLight(0xa9dcff, 2.1);
+bottomFill.position.set(1.2, -4.2, 2.6);
+scene.add(bottomFill);
+const bottomRim = new THREE.PointLight(0xff8a5a, 1.15, 10, 2);
+bottomRim.position.set(-1.8, -2.7, -2.0);
+scene.add(bottomRim);
 
 function makeCanvasTexture(w, h, draw){
   const c = document.createElement('canvas');
@@ -733,6 +739,10 @@ const shadowMesh = new THREE.Mesh(
 shadowMesh.rotation.x = -Math.PI/2;
 shadowMesh.position.y = -1.305;
 scene.add(shadowMesh);
+const floorFade = [
+  { object:grid, material:grid.material, opacity:0.34 },
+  { object:shadowMesh, material:shadowMesh.material, opacity:0.65 }
+];
 
 for(const r of [1.02, 1.46]){
   const ring = new THREE.Mesh(
@@ -743,6 +753,7 @@ for(const r of [1.02, 1.46]){
   ring.rotation.x = -Math.PI/2;
   ring.position.y = -1.315;
   scene.add(ring);
+  floorFade.push({ object:ring, material:ring.material, opacity:ring.material.opacity });
 }
 
 const model = new THREE.Group();
@@ -1674,6 +1685,16 @@ function updateExplosion(dt){
   }
 }
 
+function updateFloorFade(dt){
+  const below = THREE.MathUtils.clamp((controls.target.y - camera.position.y - 0.05) / 0.9, 0, 1);
+  const k = 1 - Math.exp(-9 * dt);
+  for(const item of floorFade){
+    const target = item.opacity * (1 - below);
+    item.material.opacity += (target - item.material.opacity) * k;
+    item.object.visible = item.material.opacity > 0.004;
+  }
+}
+
 let elapsed = 0;
 function updateHighlights(dt){
   const hv = hoverActive();
@@ -1741,6 +1762,7 @@ function animate(){
     }
   }
   controls.update();
+  updateFloorFade(dt);
   updateLabels();
   renderer.render(scene, camera);
   if(firstFrame){

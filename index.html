@@ -245,7 +245,7 @@ h1 span{color:var(--cyan);text-shadow:0 0 24px rgba(66,230,255,.55)}
   </div>
 
   <aside class="panel parts" id="partsPanel">
-    <div class="panel-head"><span>COMPONENTS</span><span class="count" id="partCount">9</span></div>
+    <div class="panel-head"><span>COMPONENTS</span><span class="count" id="partCount">10</span></div>
     <h2>部件清单</h2>
     <div class="part-list" id="partList"></div>
     <div class="panel-foot">CLICK TO DISASSEMBLE</div>
@@ -386,10 +386,28 @@ const PARTS = {
     desc:'左侧接口盖内藏 USB-C 接口，支持 PD 快充与数据传输。橡胶密封圈与机械卡扣保证开合后的防水性能。',
     specs:[['接口','USB-C'],['充电','PD 快充'],['数据','USB 传输'],['密封','橡胶防水圈']],
     anchor:[-0.90,-0.02,0.05]
+  },
+  power:{
+    name:'电源开关', en:'POWER BUTTON', tag:'长按开关机',
+    desc:'机身右侧上方的密封电源键，长按用于开机或关机。按键与机身外壳齐平，避免运动过程中误触，同时保持整机防水性能。',
+    specs:[['功能','电源开 / 关'],['操作','长按'],['位置','机身右侧上方'],['防护','密封按键']],
+    anchor:[0.72,0.30,0]
+  },
+  portCover:{
+    name:'USB-C 充电口盖', en:'USB-C PORT COVER', tag:'充电 / 数据传输',
+    desc:'机身右侧下方的 USB-C 接口保护盖，掀开后可使用 USB-C 数据线充电或传输文件。闭合后与密封结构共同阻隔水与灰尘。',
+    specs:[['接口','USB-C'],['功能','充电 / 数据传输'],['位置','机身右侧下方'],['密封','接口保护盖']],
+    anchor:[0.72,-0.24,0]
+  },
+  batteryCover:{
+    name:'电池仓保护盖', en:'BATTERY COMPARTMENT COVER', tag:'1770 mAh · 快拆电池',
+    desc:'机身左侧的电池仓保护盖，打开后即可取放 1770 mAh 耐低温电池与存储卡。闭合卡扣后可维持 18 米裸机防水能力。',
+    specs:[['电池','1770 mAh / 6.8 Wh'],['存储','microSD ≤ 512 GB'],['开合','机械卡扣'],['密封','防水保护盖']],
+    anchor:[-0.86,-0.02,0.05]
   }
 };
 const ORDER = ['frame','lens','sensor','frontScreen','rearScreen','record','qs','battery','mount','mainboard','sideCover'];
-const REAL_ORDER = ['frame','lens','frontScreen','rearScreen','record','qs','battery','mount','sideCover'];
+const REAL_ORDER = ['frame','lens','frontScreen','rearScreen','record','qs','power','portCover','batteryCover','mount'];
 const REAL_NODE_TO_PART = {
   BOLI:'frontScreen', JISHEN_020:'frontScreen',
   JISHEN_09:'lens', JISHEN_010:'lens', JISHEN_022:'lens', JISHEN_023:'lens',
@@ -398,8 +416,9 @@ const REAL_NODE_TO_PART = {
   '镜头丝印':'lens',
   JISHEN_013:'rearScreen', '网格034':'rearScreen', '网格034_1':'rearScreen',
   JISHEN_012:'qs', JISHEN_04:'record',
-  JISHEN_08:'battery', JISHEN_015:'battery', JISHEN_07_1:'battery',
-  JISHEN_05:'sideCover', JISHEN_019_1:'sideCover',
+  JISHEN_015:'power',
+  JISHEN_08:'portCover', JISHEN_07_1:'portCover',
+  JISHEN_05:'batteryCover', JISHEN_019_1:'batteryCover',
   JISHEN_016:'mount', JISHEN_017:'mount', JISHEN_018:'mount',
   JISHEN_014:'frame', JISHEN_06:'frame', JISHEN_03:'frame', JISHEN_029:'frame',
   JISHEN_030:'frame', JISHEN_031:'frame'
@@ -411,9 +430,10 @@ const REAL_OFFSETS = {
   rearScreen:[0.03,0.05,-0.70],
   record:[0.06,0.56,-0.04],
   qs:[-0.04,0.68,0.02],
-  battery:[0.64,-0.02,0.05],
+  power:[0.46,0.16,0.03],
+  portCover:[0.54,-0.13,0.04],
+  batteryCover:[-0.64,-0.02,0.05],
   mount:[0,-0.56,0.04],
-  sideCover:[-0.64,-0.02,0.05]
 };
 
 const canvasWrap = document.getElementById('canvas-wrap');
@@ -1199,7 +1219,7 @@ function showOverview(){
     '<h3 class="ov-title">点击部件<br/>开始拆解</h3>'+
     '<p class="ov-sub">直接拆解 DJI 官方实机 3D 网格。镜头、屏幕、仓门与按键会从真实机身分离，不在外观模型与示意模型之间切换。</p>'+
     '<div class="ov-stats">'+
-      '<div class="ov-stat"><b>9</b><span>真实模块</span></div>'+
+      '<div class="ov-stat"><b>10</b><span>真实模块</span></div>'+
       '<div class="ov-stat"><b>4K/120</b><span>最高视频规格</span></div>'+
       '<div class="ov-stat"><b>155°</b><span>超广角视场</span></div>'+
       '<div class="ov-stat"><b>18 m</b><span>裸机防水</span></div>'+
@@ -1863,7 +1883,7 @@ function setupRealModules(root){
   const anchorNudge = {
     frame:[0,0.34,0], lens:[0,0.02,0.06], frontScreen:[0,0,0.03],
     rearScreen:[0,0,-0.03], record:[0,0.03,0], qs:[0,0.03,0],
-    battery:[0.03,0,0], mount:[0,-0.03,0], sideCover:[-0.03,0,0]
+    power:[0.03,0,0], portCover:[0.03,0,0], batteryCover:[-0.03,0,0], mount:[0,-0.03,0]
   };
   const scale = explodeScale();
 

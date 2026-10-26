@@ -248,7 +248,7 @@ h1 span{color:var(--cyan);text-shadow:0 0 24px rgba(66,230,255,.55)}
     <div class="panel-head"><span>COMPONENTS</span><span class="count" id="partCount">10</span></div>
     <h2>部件清单</h2>
     <div class="part-list" id="partList"></div>
-    <div class="panel-foot">CLICK TO DISASSEMBLE</div>
+    <div class="panel-foot">CLICK TO DISASSEMBLE · X-RAY</div>
   </aside>
 
   <section class="panel detail" id="detailPanel">
@@ -292,7 +292,7 @@ h1 span{color:var(--cyan);text-shadow:0 0 24px rgba(66,230,255,.55)}
       <div class="help-grid">
         <div><span class="mono">01</span><b>旋转视角</b><p>在模型上按住左键拖动，围绕机身自由观察。</p></div>
         <div><span class="mono">02</span><b>缩放 / 平移</b><p>滚轮缩放，右键拖动平移，推近查看镜头细节。</p></div>
-        <div><span class="mono">03</span><b>点击拆解</b><p>点击任意部件触发拆解动画，同时高亮并显示参数。</p></div>
+      <div><span class="mono">03</span><b>点击拆解</b><p>点击部件触发拆解并显示参数。拆开镜头、屏幕或仓盖后，外壳会自动转为 X-RAY 透视，露出内部电池、主板与传感器。</p></div>
         <div><span class="mono">04</span><b>快捷操作</b><p>空格：全部拆解 / 组装 · R：重置视角 · A：自动旋转 · ESC：取消选中</p></div>
       </div>
       <button class="modal-btn" id="btnHelpClose">开始探索</button>
@@ -786,6 +786,10 @@ let realModelReady = false;
 let realModulesReady = false;
 let assetSettled = false;
 let loadFailed = false;
+let shellReveal = 1;
+let shellRevealTarget = 1;
+const shellMaterials = [];
+let shellGhostMat = null;
 const M = (o) => new THREE.MeshStandardMaterial(o);
 const P = (o) => new THREE.MeshPhysicalMaterial(o);
 function add(g, geo, mat, x=0, y=0, z=0, rx=0, ry=0, rz=0){
@@ -1046,6 +1050,139 @@ function buildSideCover(){
   return g;
 }
 
+function buildInnerAssembly(){
+  const g = new THREE.Group();
+  g.name = 'internalAssembly';
+
+  const chassisMat = M({color:0x151b21, metalness:0.58, roughness:0.48, roughnessMap:noiseTex, envMapIntensity:1.2});
+  const chassisEdgeMat = M({color:0x343c44, metalness:0.82, roughness:0.3, envMapIntensity:1.25});
+  const graphiteMat = M({color:0x101419, metalness:0.4, roughness:0.68});
+  const boardMat = M({color:0x07251a, metalness:0.28, roughness:0.5, envMapIntensity:1.1});
+  const chipMat = M({color:0x06090c, metalness:0.58, roughness:0.3});
+  const shieldMat = M({color:0x9da7ae, metalness:1, roughness:0.25, envMapIntensity:1.5});
+  const copperMat = M({color:0xb46f35, metalness:0.95, roughness:0.33, emissive:0x2b1105, emissiveIntensity:0.16, envMapIntensity:1.3});
+  const goldMat = M({color:0xc59a47, metalness:1, roughness:0.24, envMapIntensity:1.6});
+  const flexMat = M({color:0xc46a28, metalness:0.28, roughness:0.58, emissive:0x2b1004, emissiveIntensity:0.18});
+  const rubberMat = M({color:0x080a0d, metalness:0.08, roughness:0.86});
+  const screwMat = M({color:0x59636c, metalness:1, roughness:0.24, envMapIntensity:1.5});
+  const cellMat = M({color:0x262c32, metalness:0.46, roughness:0.4, roughnessMap:noiseTex, envMapIntensity:1.2});
+
+  add(g, new RoundedBoxGeometry(1.24,0.69,0.034,4,0.025), graphiteMat, 0,-0.005,-0.177);
+  add(g, new RoundedBoxGeometry(0.96,0.48,0.008,3,0.012), copperMat, 0.02,0.015,-0.198);
+  add(g, new RoundedBoxGeometry(0.76,0.34,0.006,2,0.01), graphiteMat, 0.02,0.015,-0.204);
+  for(const x of [-0.50,0.52]) for(const y of [-0.27,0.29]){
+    add(g, new THREE.CylinderGeometry(0.012,0.012,0.009,16), screwMat, x,y,-0.197, Math.PI/2,0,0);
+  }
+
+  add(g, new RoundedBoxGeometry(1.24,0.038,0.28,3,0.016), chassisMat, 0,0.365,-0.055);
+  add(g, new RoundedBoxGeometry(1.24,0.038,0.28,3,0.016), chassisMat, 0,-0.374,-0.055);
+  add(g, new RoundedBoxGeometry(0.035,0.70,0.28,3,0.014), chassisEdgeMat, 0.635,-0.005,-0.055);
+  add(g, new RoundedBoxGeometry(0.022,0.62,0.24,3,0.009), chassisEdgeMat, -0.272,0.005,-0.045);
+  add(g, new RoundedBoxGeometry(0.20,0.028,0.24,3,0.012), chassisEdgeMat, -0.18,-0.345,-0.045);
+  add(g, new RoundedBoxGeometry(0.20,0.028,0.24,3,0.012), chassisEdgeMat, -0.18,0.336,-0.045);
+
+  add(g, new RoundedBoxGeometry(0.30,0.66,0.40,5,0.036), cellMat, -0.475,-0.015,-0.005);
+  add(g, new RoundedBoxGeometry(0.286,0.64,0.384,5,0.032), graphiteMat, -0.475,-0.015,-0.005);
+  add(g, new RoundedBoxGeometry(0.31,0.018,0.405,3,0.008), chassisEdgeMat, -0.475,0.185,-0.005);
+  add(g, new RoundedBoxGeometry(0.31,0.018,0.405,3,0.008), chassisEdgeMat, -0.475,-0.185,-0.005);
+  const batteryLabel = new THREE.Mesh(new THREE.PlaneGeometry(0.28,0.28),
+    new THREE.MeshBasicMaterial({map:batteryTex, toneMapped:false}));
+  batteryLabel.rotation.y = -Math.PI/2;
+  batteryLabel.position.set(-0.626,0.02,-0.005);
+  g.add(batteryLabel);
+  for(const z of [-0.12,0,0.12]){
+    add(g, new THREE.BoxGeometry(0.014,0.078,0.026), goldMat, -0.314,0.245,z);
+  }
+  add(g, new RoundedBoxGeometry(0.10,0.045,0.14,2,0.01), rubberMat, -0.30,-0.245,0.105);
+  add(g, new THREE.BoxGeometry(0.008,0.012,0.072), flexMat, -0.294,-0.245,0.105);
+
+  add(g, new RoundedBoxGeometry(0.54,0.46,0.026,4,0.015), boardMat, 0.04,0.035,-0.022);
+  const boardFace = new THREE.Mesh(new THREE.PlaneGeometry(0.505,0.425),
+    M({map:pcbTex, roughness:0.46, metalness:0.16, emissive:0x06170f, emissiveIntensity:0.4, envMapIntensity:1.25}));
+  boardFace.position.set(0.04,0.035,-0.008);
+  g.add(boardFace);
+  add(g, new RoundedBoxGeometry(0.18,0.17,0.026,3,0.009), shieldMat, 0.015,0.075,0.009);
+  add(g, new RoundedBoxGeometry(0.11,0.095,0.009,2,0.004), chipMat, 0.012,0.078,0.027);
+  add(g, new RoundedBoxGeometry(0.075,0.06,0.007,2,0.003), chipMat, 0.21,0.148,0.019);
+  add(g, new RoundedBoxGeometry(0.09,0.07,0.012,2,0.004), shieldMat, 0.245,0.155,0.007);
+  add(g, new RoundedBoxGeometry(0.13,0.062,0.012,2,0.004), chipMat, 0.13,-0.145,0.01);
+  add(g, new RoundedBoxGeometry(0.075,0.048,0.009,2,0.003), chipMat, -0.105,-0.15,0.008);
+  add(g, new RoundedBoxGeometry(0.023,0.20,0.006,2,0.002), flexMat, 0.296,-0.03,0.004);
+  add(g, new RoundedBoxGeometry(0.055,0.028,0.008,2,0.003), goldMat, -0.18,0.205,0.009);
+  const boardMark = makeTextPlane('DJI · ACT4', {w:0.13,h:0.026,size:56,color:'#9bc7b4',opacity:0.62});
+  boardMark.position.set(0.07,-0.08,0.009);
+  g.add(boardMark);
+
+  add(g, new RoundedBoxGeometry(0.245,0.235,0.022,4,0.015), boardMat, 0.432,0.15,0.065);
+  add(g, new RoundedBoxGeometry(0.225,0.215,0.026,3,0.014), copperMat, 0.432,0.15,0.047);
+  const sensorRing = new THREE.Mesh(new THREE.TorusGeometry(0.094,0.006,10,56), goldMat);
+  sensorRing.position.set(0.432,0.15,0.079);
+  g.add(sensorRing);
+  add(g, new RoundedBoxGeometry(0.115,0.105,0.008,3,0.004), M({color:0x071828, metalness:0.62, roughness:0.18, envMapIntensity:1.8}), 0.432,0.15,0.084);
+  const sensorGlass = new THREE.Mesh(new THREE.PlaneGeometry(0.09,0.082),
+    P({color:0x0b2b46, transparent:true, opacity:0.72, metalness:0.05, roughness:0.04, clearcoat:1, envMapIntensity:2}));
+  sensorGlass.position.set(0.432,0.15,0.09);
+  g.add(sensorGlass);
+  add(g, new RoundedBoxGeometry(0.09,0.036,0.024,2,0.007), goldMat, 0.355,0.15,0.061);
+  add(g, new RoundedBoxGeometry(0.08,0.026,0.012,2,0.004), flexMat, 0.32,0.105,0.052);
+
+  add(g, new RoundedBoxGeometry(0.065,0.115,0.16,3,0.017), shieldMat, 0.665,-0.132,-0.01);
+  add(g, new RoundedBoxGeometry(0.042,0.078,0.122,2,0.014), rubberMat, 0.682,-0.132,-0.01);
+  add(g, new RoundedBoxGeometry(0.012,0.038,0.085,2,0.004), chipMat, 0.695,-0.132,-0.01);
+  for(const y of [-0.153,-0.132,-0.111]){
+    add(g, new THREE.BoxGeometry(0.005,0.007,0.07), goldMat, 0.704,y,-0.01);
+  }
+
+  add(g, new RoundedBoxGeometry(0.28,0.115,0.20,3,0.018), chassisMat, 0.36,0.338,-0.065);
+  add(g, new RoundedBoxGeometry(0.22,0.072,0.17,2,0.012), copperMat, 0.36,0.345,-0.052);
+  add(g, new RoundedBoxGeometry(0.17,0.026,0.14,2,0.008), flexMat, 0.36,0.385,-0.052);
+  for(const y of [-0.028,0,0.028]){
+    add(g, new THREE.BoxGeometry(0.14,0.004,0.004), goldMat, 0.36,0.345+y,-0.137);
+  }
+  add(g, new RoundedBoxGeometry(0.21,0.105,0.17,3,0.018), rubberMat, -0.46,0.337,-0.045);
+  add(g, new RoundedBoxGeometry(0.42,0.10,0.16,3,0.02), rubberMat, 0.07,-0.306,-0.072);
+  add(g, new RoundedBoxGeometry(0.32,0.055,0.13,3,0.014), copperMat, 0.04,-0.286,-0.055);
+
+  add(g, new THREE.CylinderGeometry(0.105,0.105,0.075,40), chassisMat, 0.48,-0.285,-0.005, Math.PI/2,0,0);
+  add(g, new THREE.CylinderGeometry(0.088,0.088,0.012,40), rubberMat, 0.48,-0.285,0.037, Math.PI/2,0,0);
+  add(g, new THREE.TorusGeometry(0.106,0.006,8,40), goldMat, 0.48,-0.285,0.04, 0,0,Math.PI/2);
+  for(const y of [-0.045,0,0.045]){
+    add(g, new THREE.BoxGeometry(0.11,0.008,0.006), goldMat, 0.48,-0.285+y,0.044);
+  }
+  for(const x of [-0.34,-0.43,-0.52]){
+    add(g, new THREE.CylinderGeometry(0.017,0.017,0.028,20), rubberMat, x,-0.343,0.02, Math.PI/2,0,0);
+    add(g, new THREE.CylinderGeometry(0.007,0.007,0.031,16), M({color:0x161c21, metalness:0.4, roughness:0.7}), x,-0.343,0.021, Math.PI/2,0,0);
+  }
+  add(g, new THREE.BoxGeometry(0.026,0.012,0.008),
+    M({color:0x3ee5ff, emissive:0x29d5ed, emissiveIntensity:2.4, metalness:0.2, roughness:0.2}),
+    0.275,0.132,0.015);
+
+  const addFlex = (pts, radius=0.005) => {
+    const curve = new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(p[0],p[1],p[2])));
+    add(g, new THREE.TubeGeometry(curve,30,radius,6,false), flexMat);
+  };
+  addFlex([[-0.305,-0.24,0.10],[-0.24,-0.20,0.07],[-0.14,-0.12,0.025],[-0.10,-0.11,0.005]],0.0055);
+  addFlex([[0.31,0.105,0.05],[0.30,0.08,0.035],[0.28,0.06,0.016],[0.27,0.045,0.008]],0.0045);
+  addFlex([[0.64,-0.12,0.025],[0.56,-0.08,0.035],[0.45,-0.055,0.02],[0.34,-0.045,0.012]],0.0045);
+  addFlex([[-0.24,0.20,0.00],[-0.18,0.24,0.01],[-0.06,0.23,0.012],[0.04,0.19,0.01]],0.0038);
+  addFlex([[-0.24,0.19,-0.07],[-0.12,0.22,-0.09],[0.05,0.20,-0.085],[0.13,0.16,-0.06]],0.0035);
+
+  const sdCard = add(g, new RoundedBoxGeometry(0.105,0.012,0.07,2,0.005),
+    M({color:0x252b30, metalness:0.45, roughness:0.42}), -0.195,0.205,0.06);
+  sdCard.rotation.y = 0.12;
+  add(g, new RoundedBoxGeometry(0.026,0.014,0.06,2,0.004), goldMat, -0.25,0.205,0.06);
+  for(const x of [-0.57,0.32]){
+    add(g, new THREE.CylinderGeometry(0.011,0.011,0.008,16), screwMat, x,0.315,-0.015, Math.PI/2,0,0);
+  }
+
+  g.traverse(o=>{
+    if(!o.isMesh) return;
+    o.raycast = ()=>{};
+    o.userData.internal = true;
+  });
+  return g;
+}
+
 const builders = {
   frame:buildFrame, lens:buildLens, sensor:buildSensor, frontScreen:buildFrontScreen,
   rearScreen:buildRearScreen, record:buildRecord, qs:buildQS, battery:buildBattery,
@@ -1217,7 +1354,7 @@ function showOverview(){
   detailBody.innerHTML =
     '<div class="ov-kicker">INTERACTIVE EXPLODED VIEW</div>'+
     '<h3 class="ov-title">点击部件<br/>开始拆解</h3>'+
-    '<p class="ov-sub">直接拆解 DJI 官方实机 3D 网格。镜头、屏幕、仓门与按键会从真实机身分离，不在外观模型与示意模型之间切换。</p>'+
+    '<p class="ov-sub">直接拆解 DJI 官方实机 3D 网格。镜头、屏幕、仓门与按键会从真实机身分离；拆开后自动透视内部电池、主板与影像传感器。</p>'+
     '<div class="ov-stats">'+
       '<div class="ov-stat"><b>10</b><span>真实模块</span></div>'+
       '<div class="ov-stat"><b>4K/120</b><span>最高视频规格</span></div>'+
@@ -1259,7 +1396,11 @@ function showDetail(id){
 function refreshUI(){
   const open = ORDER.filter(id=>partState[id].exploded).length;
   const total = ORDER.filter(id=>partState[id].offset.lengthSq() > 0.0001).length;
-  const label = open === 0 ? 'ASSEMBLED · OFFICIAL' : (open >= total ? 'FULL TEARDOWN' : 'EXPLODED · ' + open);
+  const exposed = ['lens','frontScreen','rearScreen','batteryCover','portCover']
+    .filter(id=>partState[id]?.exploded).length;
+  shellRevealTarget = exposed ? (exposed >= 5 ? 0.018 : 0.03) : 1;
+  const label = open === 0 ? 'ASSEMBLED · OFFICIAL' :
+    (open >= total ? 'FULL TEARDOWN' : 'EXPLODED · ' + open) + (exposed ? ' · X-RAY' : '');
   statusEl.innerHTML = '<em class="'+(open ? 'on' : '')+'"></em>' + label;
   const btnLabel = document.querySelector('#btnExplode span');
   if(btnLabel) btnLabel.textContent = open >= total ? '全部组装' : '全部拆解';
@@ -1647,10 +1788,10 @@ function updateLabels(){
       const hits = labelRay.intersectObject(activeModel, true);
       let blocked = false;
       for(const h of hits){
-        if(h.object.isMesh){
-          blocked = h.object.userData.partId !== id;
-          break;
-        }
+        if(!h.object.isMesh) continue;
+        if(h.object.userData.partId === 'frame' && shellRevealTarget < 0.9) continue;
+        blocked = h.object.userData.partId !== id;
+        break;
       }
       p.occluded = blocked;
     }
@@ -1755,6 +1896,49 @@ function updateHalo(dt){
   halo.material.opacity += (target - halo.material.opacity) * (1 - Math.exp(-8 * dt));
 }
 
+function prepareShellMaterials(){
+  const shell = realModelGroup.getObjectByName('real_frame');
+  if(!shell) return;
+  shellGhostMat = new THREE.LineBasicMaterial({
+    color:0x77aebd, transparent:true, opacity:0, depthWrite:false, depthTest:false, toneMapped:false
+  });
+  shell.traverse(o=>{
+    if(!o.isMesh) return;
+    const source = Array.isArray(o.material) ? o.material : [o.material];
+    const copies = source.map(m=>{
+      const c = m.clone();
+      shellMaterials.push({
+        mat:c,
+        baseOpacity:m.opacity === undefined ? 1 : m.opacity,
+        baseTransparent:m.transparent,
+        baseDepthWrite:m.depthWrite,
+        ghost:false
+      });
+      return c;
+    });
+    o.material = Array.isArray(o.material) ? copies : copies[0];
+    const edges = new THREE.EdgesGeometry(o.geometry, 34);
+    const ghost = new THREE.LineSegments(edges, shellGhostMat);
+    ghost.raycast = ()=>{};
+    ghost.renderOrder = 3;
+    o.add(ghost);
+  });
+}
+
+function updateShellReveal(dt){
+  shellReveal += (shellRevealTarget - shellReveal) * (1 - Math.exp(-5.5 * dt));
+  const ghost = shellReveal < 0.995;
+  for(const item of shellMaterials){
+    item.mat.opacity = item.baseOpacity * (ghost ? Math.max(0.012, shellReveal) : 1);
+    if(item.ghost === ghost) continue;
+    item.ghost = ghost;
+    item.mat.transparent = ghost || item.baseTransparent;
+    item.mat.depthWrite = ghost ? false : item.baseDepthWrite;
+    item.mat.needsUpdate = true;
+  }
+  if(shellGhostMat) shellGhostMat.opacity = ghost ? Math.min(0.22, (1 - shellReveal) * 0.24) : 0;
+}
+
 const clock = new THREE.Clock();
 let firstFrame = true;
 function animate(){
@@ -1764,6 +1948,7 @@ function animate(){
   updateExplosion(dt);
   updateHighlights(dt);
   updateHalo(dt);
+  updateShellReveal(dt);
   model.position.y = 0.02 + Math.sin(elapsed * 0.7) * 0.008;
   if(realModelGroup.visible) realModelGroup.position.y = 0.02 + Math.sin(elapsed * 0.7) * 0.008;
   stars.rotation.y += dt * 0.012;
@@ -1879,6 +2064,7 @@ function setupRealModules(root){
     mesh.raycast = THREE.Mesh.prototype.raycast;
   }
 
+  prepareShellMaterials();
   realModelGroup.updateMatrixWorld(true);
   const anchorNudge = {
     frame:[0,0.34,0], lens:[0,0.02,0.06], frontScreen:[0,0,0.03],
@@ -1954,6 +2140,7 @@ function finishRealLoad(gltf){
   root.scale.setScalar(scale);
   root.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
   realModelGroup.add(root);
+  realModelGroup.add(buildInnerAssembly());
   setupRealModules(root);
   assetSettled = true;
   loadFailed = false;
